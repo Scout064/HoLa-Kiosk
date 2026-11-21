@@ -6,7 +6,7 @@ reachability** (gateway, WAN latency — probed directly from the kiosk Pi),
 and the **kiosk Pi itself**. Single 800×480 view, color-coded green/amber/red,
 readable from a few meters. Runs entirely on the local network.
 
-Built on **HoLa-Dash** (sibling repo, [`../HoLa_Dash`](../HoLa_Dash)) — see
+Built on **HoLa-Dash** ([github.com/Scout064/HoLa-Dash](https://github.com/Scout064/HoLa-Dash)) — see
 [`AGENTS.md`](AGENTS.md) for the original brief.
 
 ---
