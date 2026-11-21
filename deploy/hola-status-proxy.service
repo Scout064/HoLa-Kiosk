@@ -11,7 +11,7 @@ Group=__SERVICE_GROUP__
 WorkingDirectory=__TARGET__/HoLa_Kiosk/deploy
 # upstream status service — SET THIS to your instance (preserved across
 # re-installs once customized)
-Environment=STATUS_PROXY_TARGET=http://10.0.0.10:3001
+Environment=STATUS_PROXY_TARGET=__STATUS_TARGET__
 ExecStart=__TARGET__/venv/bin/uvicorn status_proxy:app --host 127.0.0.1 --port 8601
 Restart=always
 RestartSec=3
