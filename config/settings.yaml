@@ -1,0 +1,96 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# HoLa Kiosk configuration — consumed by the HoLa-Dash backend, which runs
+# ON the kiosk Pi (see README: "Reuse decision").
+#
+# Point the backend at this file:
+#   HOLA_CONFIG=<kiosk repo>/config/settings.yaml
+# (the deploy/hola-backend.service unit already does this)
+#
+# Same conventions as HoLa-Dash: ${VAR} placeholders resolve from the .env
+# in the repo root.
+# ─────────────────────────────────────────────────────────────────────────────
+
+web:
+  host: "127.0.0.1"     # kiosk-local only; set 0.0.0.0 to reach the API from
+  port: 8600             # the LAN (then set web.api_key!)
+  log_level: "info"
+  # Empty (unset HOLA_API_KEY in .env) = no auth. Setting it secures LAN
+  # access; loopback clients — the kiosk screen itself — are always exempt.
+  api_key: "${HOLA_API_KEY}"
+  # The kiosk page is served via file:// from cage/Chromium — opaque origin,
+  # so the backend must answer CORS. Keep permissive on localhost.
+  cors_origins: ["*"]
+
+plugins:
+  directories:
+    - "plugins"                        # HoLa-Dash built-ins (proxmox, prometheus, …)
+    - "/opt/hola/HoLa_Kiosk/modules"   # kiosk-specific modules (installed path)
+
+  # Keep the kiosk lean (1 GB Pi): no Zynk, no Home Assistant.
+  disabled: ["zynk", "homeassistant"]
+
+  # ── Proxmox VE (read-only token is enough for a kiosk) ────────────────────
+  proxmox:
+    host: "https://10.0.0.10:8006"      # ← your PVE host
+    user: "root@pam"
+    token_name: "${PROXMOX_TOKEN_NAME}"
+    token_value: "${PROXMOX_TOKEN_VALUE}"
+    verify_ssl: false
+    poll_interval_seconds: 30
+    # Kiosk view: only running guests — absence from the list means
+    # "not running" (the main dashboard defaults to showing both)
+    show_stopped_guests: false
+
+  # ── Prometheus (SNMP metrics of the Zyxel devices) ─────────────────────────
+  # Compact query set for the small screen. Depends on your Prometheus box
+  # being up — if it isn't, this tile shows "unavailable" (the rest works).
+  prometheus:
+    base_url: "http://10.0.0.20:9090"
+    poll_interval_seconds: 60
+    # Drop series whose instance label is in these ranges (single IPs work
+    # too). Exclude the homelab management subnet here.
+    exclude_instances: ["192.0.2.0/24"]
+    queries:
+      cpu_usage:
+        query: "sysMgmtCPUUsage"
+        unit: "%"
+      temperature:
+        query: "zyHwMonitorTemperatureCurrentValue"
+        unit: "°C"
+      fan_rpm:
+        query: "zyHwMonitorFanRpmCurrentValue"
+        unit: "RPM"
+      vpn_active:
+        query: "vpnStatusActiveStatus"
+
+  # ── Pi-hole (v6 REST API) ──────────────────────────────────────────────────
+  # If your Pi-hole serves its API over HTTPS (self-signed cert), use an
+  # https:// base_url — certificate verification is off by default.
+  pihole:
+    base_url: "http://10.0.0.53"        # ← your Pi-hole (no trailing /api)
+    password: "${PIHOLE_PASSWORD}"        # empty = open API (no password set)
+    verify_ssl: false                     # self-signed certs are the norm
+    poll_interval_seconds: 30
+
+  # ── Host reachability — probed directly from the kiosk Pi ─────────────────
+  # These checks run locally: they work even when every other service is down
+  # (that is the point — the kiosk shows "Proxmox DOWN" while Proxmox is down).
+  hosts:
+    poll_interval_seconds: 30
+    ping_timeout_seconds: 2
+    # Bandwidth measurement on the WAN row — runs speedtest-cli in the
+    # background, once per hour (0 disables). Requires a "wan" role check.
+    speedtest_interval_seconds: 3600
+    checks:
+      - {name: "Gateway", host: "10.0.0.254", role: "gateway"}   # ← Zyxel firewall
+      - {name: "WAN", host: "1.1.1.1", role: "wan"}
+      # Add more hosts as needed:
+      # - {name: "NAS",     host: "10.0.0.30", role: "host"}
+      # - {name: "Kismet",  host: "10.0.0.40", role: "host"}
+      # - {name: "WoL Pi",  host: "10.0.0.41", role: "host"}
+      # Port checks instead of ping: add  port: 443  to the entry.
+
+  # ── Kiosk Pi itself (CPU temperature, load, RAM, disk, uptime) ─────────────
+  rpi:
+    poll_interval_seconds: 30
+    # thermal_zone: "/sys/class/thermal/thermal_zone0/temp"   # default

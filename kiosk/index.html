@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=800, initial-scale=1">
+  <title>HoLa Kiosk</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="swipe">
+    <!-- page 1: the homelab dashboard -->
+    <div class="page" id="page-dashboard">
+      <header>
+        <div class="brand">HoLa <span id="conn" class="dot ok" title="backend ok"></span></div>
+        <div id="stale-note" hidden>retrying&hellip;</div>
+        <time id="clock">--:--:--</time>
+      </header>
+
+      <div id="banner" hidden>Backend unreachable &mdash; retrying</div>
+
+      <main>
+        <div class="col col-left">
+          <section class="card" id="slot-proxmox-nodes" hidden></section>
+          <section class="card" id="slot-proxmox-guests" hidden></section>
+        </div>
+        <div class="col col-right">
+          <section class="card" id="slot-pihole-stats" hidden></section>
+          <section class="card" id="slot-network-hosts" hidden></section>
+          <section class="card" id="slot-detailchips" hidden></section>
+        </div>
+        <div class="col col-extra" id="extra" hidden></div>
+      </main>
+
+      <footer class="card" id="slot-kiosk-pi" hidden></footer>
+    </div>
+
+    <!-- page 2: tapped machine details (from the guest chips) -->
+    <div class="page" id="page-guestdetail">
+      <div class="frame-strip" id="guestdetail-strip">
+        <span>&#8249; close &mdash; back to the dashboard</span>
+      </div>
+      <div class="guest-detail" id="guestdetail"></div>
+    </div>
+
+    <!-- page 3: Pi-hole details (tapping the Pi-hole card) -->
+    <div class="page" id="page-pihole">
+      <div class="frame-strip" id="piholedetail-strip">
+        <span>&#8249; close &mdash; back to the dashboard</span>
+      </div>
+      <div class="pihole-detail" id="piholedetail"></div>
+    </div>
+
+    <!-- page 4: Proxmox node details (tapping a node tile) -->
+    <div class="page" id="page-nodedetail">
+      <div class="frame-strip" id="nodedetail-strip">
+        <span>&#8249; close &mdash; back to the dashboard</span>
+      </div>
+      <div class="guest-detail" id="nodedetail"></div>
+    </div>
+
+    <!-- page 5: network hardware metrics detail (opened by tapping the card) -->
+    <div class="page" id="page-metrics">
+      <div class="frame-strip" id="metrics-strip">
+        <span>&#8249; close &mdash; back to the dashboard</span>
+      </div>
+      <div class="metrics-detail" id="metrics-detail"></div>
+    </div>
+
+    <!-- page 3: external status page (iframe; swipe/dots to navigate) -->
+    <div class="page" id="page-status">
+      <iframe id="status-frame" title="Status page"></iframe>
+      <div class="frame-strip" id="status-strip">
+        <span>&#8249; swipe or tap to return to the dashboard</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="dots" id="page-dots">
+    <button type="button" class="dot-btn active" data-page="1" title="Homelab dashboard"></button>
+    <button type="button" class="dot-btn" data-page="4" title="Machine details"></button>
+    <button type="button" class="dot-btn" data-page="5" title="Pi-hole details"></button>
+    <button type="button" class="dot-btn" data-page="6" title="Proxmox node details"></button>
+    <button type="button" class="dot-btn" data-page="3" title="Network hardware metrics"></button>
+    <button type="button" class="dot-btn" data-page="2" title="Status page"></button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

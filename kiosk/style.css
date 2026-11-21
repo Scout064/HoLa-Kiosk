@@ -1,0 +1,315 @@
+/* HoLa Kiosk — 800×480 (official Pi 7" DSI panel). Dark, high-contrast,
+   readable from a few meters. No framework, no build step. */
+
+:root {
+  --bg: #0b0e13;
+  --card: #141922;
+  --card-border: #1f2733;
+  --text: #e6eaf0;
+  --muted: #8a94a3;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --na: #6b7280;
+  font-size: 16px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ── swipe pages ─────────────────────────────────────────────────────── */
+
+#swipe { display: flex; width: 400%; height: 100vh; transition: transform 0.35s ease; }
+
+.page { flex: 0 0 25%; width: 25%; height: 100vh; overflow: hidden; }
+
+/* hardware metrics detail page (opened by tapping the compact card) */
+#page-metrics { display: flex; flex-direction: column; background: var(--bg); }
+.metrics-detail {
+  flex: 1; overflow-y: auto; padding: 8px 12px;
+  columns: 2; column-gap: 14px;
+}
+.metrics-detail .mgroup { break-inside: avoid; }
+.metrics-detail .stat .label { width: 170px; }
+
+/* machine detail page (opened by tapping a guest chip) */
+#page-guestdetail { display: flex; flex-direction: column; background: var(--bg); }
+.guest-detail { flex: 1; overflow-y: auto; padding: 12px 14px; }
+.gd-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.gd-head .name {
+  flex: 1; min-width: 0;
+  font-size: 16px; font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gd-head .status { font-size: 12px; font-weight: 600; color: var(--muted); }
+.guest-detail .stats { margin-bottom: 10px; }
+.guest-detail .tile { padding: 6px 8px; max-width: 420px; }
+
+/* Pi-hole detail page (opened by tapping the card) */
+#page-pihole { display: flex; flex-direction: column; background: var(--bg); }
+.pihole-detail { flex: 1; overflow-y: auto; padding: 12px 14px; columns: 2; column-gap: 14px; }
+.pihole-detail .gd-head, .pihole-detail .stats { break-inside: avoid; column-span: all; }
+.pihole-detail .mgroup { break-inside: avoid; }
+.pihole-detail .stat .label { width: 130px; }
+.top-list { display: flex; flex-direction: column; gap: 2px; }
+.top-row { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.top-row .top-name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.top-row .top-count { font-variant-numeric: tabular-nums; color: var(--muted); }
+
+#page-status { display: flex; flex-direction: column; background: var(--bg); }
+#status-frame { flex: 1; width: 100%; border: 0; }
+
+/* touch navigation back to the dashboard (the iframe consumes its own
+   touches — this strip and the dots are the parent's swipe/tap area) */
+.frame-strip {
+  flex: none; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card);
+  border-bottom: 1px solid var(--card-border);
+  font-size: 12px; color: var(--muted);
+  cursor: pointer; user-select: none;
+}
+#page-status .frame-strip { border-top: 1px solid var(--card-border); border-bottom: none; }
+
+/* page dots — only visible off the dashboard (page 1 stays uncluttered) */
+#page-dots { display: none; position: fixed; right: 12px; bottom: 44px; gap: 8px; z-index: 60; }
+body.page2 #page-dots, body.page3 #page-dots,
+body.page4 #page-dots, body.page5 #page-dots,
+body.page6 #page-dots { display: flex; }
+.dot-btn { position: relative; width: 24px; height: 24px; padding: 0; border: none; background: transparent; cursor: pointer; }
+.dot-btn::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--na); }
+.dot-btn.active::after { background: var(--ok); }
+
+/* ── header ─────────────────────────────────────────────────────────── */
+
+header {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.brand { font-size: 20px; font-weight: 700; letter-spacing: 0.06em; }
+
+#stale-note { font-size: 13px; color: var(--warn); }
+
+#clock { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.banner {
+  padding: 4px 14px;
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--bad);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── layout ──────────────────────────────────────────────────────────── */
+
+main {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  height: calc(100vh - 44px - 76px - 12px); /* header + footer + paddings */
+}
+
+.col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.col-left { flex: 3; }
+/* the guests card fills the rest of the column below the nodes card, so its
+   height is fixed by the layout instead of clipping its content */
+.col-left .card:last-child { flex: 1 1 auto; min-height: 0; }
+.col-right { flex: 2; }
+.col-extra { flex: 1; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.card.stale { border-color: var(--warn); }
+
+.card h2 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+  flex: none;
+}
+
+.card .body { flex: 1; overflow: hidden; min-height: 0; }
+
+/* ── status dots / colors ───────────────────────────────────────────── */
+
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); }
+.dot.na { background: var(--na); }
+
+.c-ok { color: var(--ok); }
+.c-warn { color: var(--warn); }
+.c-bad { color: var(--bad); }
+.c-na { color: var(--na); }
+.c-muted { color: var(--muted); }
+
+/* unreachable widget body */
+.unavail {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  gap: 4px;
+}
+.unavail .u-title { font-size: 16px; font-weight: 700; color: var(--warn); }
+.unavail .u-msg { font-size: 12px; color: var(--muted); overflow: hidden; }
+
+/* ── resource tiles (Proxmox nodes / kiosk pi) ───────────────────────── */
+
+.tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.tile {
+  flex: 1 1 45%;
+  min-width: 130px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.tile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.tile-name { font-size: 15px; font-weight: 700; display: flex; gap: 6px; align-items: center; }
+.tile-temp { font-size: 15px; font-weight: 700; }   /* same size as the node name */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+}
+.bar .lbl { font-size: 12px; width: 32px; color: var(--muted); }
+.bar .track { flex: 1; height: 6px; background: #0d1117; border-radius: 3px; overflow: hidden; }
+.bar .fill { height: 100%; border-radius: 3px; }
+.bar .val { font-size: 12px; width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.fill.ok { background: var(--ok); }
+.fill.warn { background: var(--warn); }
+.fill.bad { background: var(--bad); }
+.fill.na { background: var(--na); }
+
+.tile-foot { margin-top: 4px; font-size: 12px; color: var(--muted); }
+
+/* ── guest chips (VMs & containers) ─────────────────────────────────── */
+
+/* running guests — all machines together, flowing across two rows/columns */
+.guest-cols { columns: 2; column-gap: 6px; }
+.guest-cols .chip { break-inside: avoid; margin-bottom: 1px; }
+
+.chip {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 8px;   /* compact vertically — every running guest must fit
+                          the card without being cut off */
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.chip .dot { width: 8px; height: 8px; }
+.chip.run { border-color: rgba(34, 197, 94, 0.4); }
+.chip.stop { border-color: rgba(239, 68, 68, 0.5); }
+
+/* shared row of tappable detail chips (Network Hardware / Status Page) */
+.chips-row { display: flex; gap: 8px; }
+.detail-chip {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600;
+  padding: 4px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  cursor: pointer; user-select: none;
+  overflow: hidden;
+}
+.detail-chip .dot { flex: none; }
+.detail-chip .c-muted { flex: none; }
+.detail-chip > span:nth-child(2) {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ── hosts rows ──────────────────────────────────────────────────────── */
+
+.rows { display: flex; flex-direction: column; gap: 3px; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  padding: 2px 2px;
+}
+.row .name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; }
+.row .lat { font-variant-numeric: tabular-nums; font-size: 15px; color: var(--muted); }  /* same size as host names */
+.row .down { font-size: 15px; font-weight: 700; color: var(--bad); }
+
+/* WAN speedtest sub-line (hourly measurement) */
+.row-sub {
+  display: flex;
+  gap: 4px;
+  font-size: 12px;
+  padding: 0 2px 3px 19px;   /* aligns under the name, right of the dot */
+  margin-top: -2px;
+}
+
+/* ── metric stats (Pi-hole, SNMP hardware) ────────────────────────────── */
+
+.stats { display: flex; flex-direction: column; gap: 2px; }
+
+.stat { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.stat .label { color: var(--muted); font-size: 12px; width: 110px; flex: none; }
+.stat .value { font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; }
+.stat .unit { font-size: 12px; color: var(--muted); }
+
+.mgroup { font-size: 12px; color: var(--muted); text-transform: uppercase;
+          letter-spacing: 0.1em; margin: 5px 0 2px; }
+
+/* ── footer (kiosk pi strip) ─────────────────────────────────────────── */
+
+footer.card {
+  margin: 0 6px 6px;
+  height: 70px;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+
+footer h2 { margin: 0; font-size: 12px; width: 70px; }
+footer .body { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; }
+footer .tile { flex: 1 1 auto; min-width: 0; }
+
+.foot-temp { font-size: 13px; font-weight: 700; }   /* same size as the footer text */
+.foot-load { font-size: 13px; color: var(--muted); }

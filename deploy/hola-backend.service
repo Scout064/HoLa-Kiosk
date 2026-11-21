@@ -1,0 +1,21 @@
+[Unit]
+Description=HoLa Dash backend (kiosk data source)
+Documentation=https://github.com/Scout064/  # HoLa_Dash / HoLa_Kiosk
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_GROUP__
+WorkingDirectory=__TARGET__/HoLa_Dash/backend
+Environment=HOLA_CONFIG=__TARGET__/HoLa_Kiosk/config/settings.yaml
+Environment=HOLA_DATA_DIR=__TARGET__/data
+# python -m app.main binds host/port from settings.yaml (web.host/web.port);
+# the uvicorn binary's CLI flags would override the config — don't use them.
+ExecStart=__TARGET__/venv/bin/python -m app.main
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

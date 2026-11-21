@@ -1,0 +1,39 @@
+[Unit]
+Description=HoLa Kiosk (cage + Chromium on the 7" DSI panel)
+# Wait for the panel's DRM device, the backend and user-session machinery
+Wants=hola-backend.service dev-dri-card0.device
+After=systemd-user-sessions.service hola-backend.service dev-dri-card0.device
+# The kiosk replaces the getty on tty1 (Conflicts + After is the documented
+# systemd replacement pattern)
+Conflicts=getty@tty1.service
+After=getty@tty1.service
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_GROUP__
+# PAMName=login gives the service a proper logind session so cage can
+# become DRM master on the DSI panel
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=no
+TTYVHangup=yes
+TTYVTDisallocate=yes
+# Give the boot a few seconds before taking the panel — cold-boot races
+# between DRM/panel init and cage caused a dead screen
+ExecStartPre=/usr/bin/sleep 5
+ExecStart=/usr/bin/cage -d -- __CHROMIUM__ --kiosk --noerrdialogs \
+  --disable-infobars --disable-features=Translate \
+  --autoplay-policy=no-user-gesture-required \
+  --check-for-update-interval=31536000 \
+  --ozone-platform=wayland \
+  file://__TARGET__/HoLa_Kiosk/kiosk/index.html
+# Kiosk resilience: any crash (cage or Chromium) restarts the session
+Restart=always
+RestartSec=5
+
+[Install]
+# Raspberry Pi OS Lite boots to multi-user.target — graphical.target is only
+# reached on desktop systems, so WantedBy=graphical left the kiosk unstarted
+# at boot (stuck on the tty1 login prompt). multi-user works everywhere.
+WantedBy=multi-user.target
